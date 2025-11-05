@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broadcast Display Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- QR Code Generation Library -->
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+        }
+        .marquee {
+            display: inline-block;
+            animation: marquee 80s linear infinite;
+            padding-left: 100%; /* Start off-screen */
+        }
+        @keyframes marquee {
+            0% { transform: translateX(0%); }
+            100% { transform: translateX(-100%); }
+        }
+        @keyframes scroll-up {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-50%); }
+        }
+        .scrolling-events-container {
+            animation: scroll-up linear infinite;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #1f2937; }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background-color: #4b5563;
+            border-radius: 4px;
+            border: 2px solid #1f2937;
+        }
+        #controls-container.hidden-panel { transform: translateY(-100%); }
+        :root {
+            --brand-water: #1e29f5;
+            --brand-deep-water: #00416e;
+            --brand-sky: #33d8ff;
+            --brand-dawn: #ffd400;
+            --brand-leaf: #0086a6;
+            --brand-poppy: #e64f00;
+            --brand-panel-bg: #1f2937;
+        }
+        .mode-btn-active {
+            background-color: var(--brand-dawn) !important;
+            color: var(--brand-deep-water) !important;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body class="text-white flex flex-col h-screen overflow-hidden">
+
+    <!-- CONTROLS SECTION -->
+    <div id="controls-container" class="bg-[var(--brand-panel-bg)]/95 backdrop-blur-sm p-4 shadow-lg fixed top-0 left-0 right-0 z-20 transform transition-transform duration-300 ease-in-out hidden-panel">
+        <h1 class="text-xl font-bold text-center mb-4" style="color: var(--brand-sky);">Broadcast Control Panel</h1>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <!-- YouTube Playlist Controls -->
+            <div class="space-y-2">
+                <label for="youtube-link" class="block font-semibold">Add YouTube Video to Playlist</label>
+                <div class="flex">
+                    <input type="text" id="youtube-link" placeholder="Paste YouTube URL here..." class="w-full bg-gray-700 border border-gray-600 rounded-l-md px-3 py-2 focus:outline-none focus:ring-2" style="border-color: var(--brand-water); --tw-ring-color: var(--brand-sky);">
+                    <button id="add-video-btn" class="text-white font-bold py-2 px-4 rounded-r-md transition-opacity hover:opacity-90" style="background-color: var(--brand-water);">Add</button>
+                </div>
+                <h3 class="font-semibold pt-2">Video Playlist:</h3>
+                <div id="playlist-controls" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-2 bg-black/20 p-2 rounded"></div>
+            </div>
+
+            <!-- Event Calendar Controls -->
+            <div class="space-y-2">
+                <label for="event-text" class="block font-semibold">Add Event / Note</label>
+                 <div class="flex">
+                    <input type="text" id="event-text" placeholder="Enter event title or note..." class="w-full bg-gray-700 border border-gray-600 rounded-l-md px-3 py-2 focus:outline-none focus:ring-2" style="border-color: var(--brand-leaf); --tw-ring-color: var(--brand-sky);">
+                    <button id="add-event-btn" class="text-white font-bold py-2 px-4 rounded-r-md transition-opacity hover:opacity-90" style="background-color: var(--brand-leaf);">Add</button>
+                </div>
+                <h3 class="font-semibold pt-2">Current Events:</h3>
+                <div id="event-list-controls" class="space-y-2 max-h-60 overflow-y-auto custom-scrollbar pr-2 bg-black/20 p-2 rounded"></div>
+            </div>
+
+            <!-- Ticker Controls -->
+            <div class="space-y-2">
+                <label for="ticker-message" class="block font-semibold">Add Ticker Message</label>
+                <div class="flex">
+                    <input type="text" id="ticker-message" placeholder="Enter new message..." class="w-full bg-gray-700 border border-gray-600 rounded-l-md px-3 py-2 focus:outline-none focus:ring-2" style="border-color: var(--brand-poppy); --tw-ring-color: var(--brand-sky);">
+                    <button id="add-ticker-btn" class="text-white font-bold py-2 px-4 rounded-r-md transition-opacity hover:opacity-90" style="background-color: var(--brand-poppy);">Add</button>
+                </div>
+                 <div class="pt-2">
+                    <label class="block font-semibold">Ticker Mode</label>
+                    <div class="flex space-x-2 mt-1">
+                        <button id="continuous-mode-btn" class="flex-1 text-sm py-2 px-3 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors">Continuous Loop</button>
+                        <button id="individual-mode-btn" class="flex-1 text-sm py-2 px-3 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors">Individual Loop</button>
+                    </div>
+                </div>
+                <div class="pt-2">
+                    <label for="ticker-speed" class="block font-semibold">Scroll Speed</label>
+                    <div class="flex items-center space-x-2 text-sm text-gray-400 mt-1">
+                        <span>Fast</span>
+                        <input type="range" id="ticker-speed" min="10" max="600" value="150" class="w-full accent-[var(--brand-dawn)]">
+                        <span>Slow</span>
+                    </div>
+                </div>
+                 <h3 class="font-semibold pt-2">Ticker Messages:</h3>
+                <div id="ticker-list-controls" class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2 bg-black/20 p-2 rounded"></div>
+            </div>
+
+            <!-- Graphics Controls -->
+            <div class="space-y-2">
+                <label class="block font-semibold">Generate QR Code</label>
+                <div class="space-y-2 bg-gray-700/50 p-3 rounded-md border border-gray-600">
+                    <input type="text" id="qr-code-title" placeholder="Enter QR Code Title..." class="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2" style="border-color: var(--brand-dawn); --tw-ring-color: var(--brand-sky);">
+                    <input type="url" id="qr-code-url" placeholder="Enter URL for QR Code..." class="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2" style="border-color: var(--brand-dawn); --tw-ring-color: var(--brand-sky);">
+                    <button id="add-qr-btn" class="w-full text-white font-bold py-2 px-4 rounded-md transition-opacity hover:opacity-90 mt-1" style="background-color: var(--brand-dawn); color: var(--brand-deep-water);">Generate QR Code</button>
+                </div>
+                <div class="space-y-2 bg-gray-700/50 p-3 rounded-md border border-gray-600">
+                     <label for="qr-rotation-time" class="text-sm font-semibold">Rotation Interval (seconds)</label>
+                     <input type="number" id="qr-rotation-time" value="10" min="1" class="w-full bg-gray-800 border border-gray-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2" style="border-color: var(--brand-dawn); --tw-ring-color: var(--brand-sky);">
+                </div>
+                 <h3 class="font-semibold pt-2">Available QR Codes:</h3>
+                <div id="qr-code-list-controls" class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-2 bg-black/20 p-2 rounded"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toggle Controls Button -->
+    <button id="toggle-controls-btn" class="fixed top-4 right-4 z-30 bg-gray-700/50 p-2 rounded-full hover:bg-gray-600/70 transition-colors">
+        <svg id="settings-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        <svg id="close-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+    </button>
+
+    <!-- MAIN DISPLAY AREA -->
+    <div class="flex flex-1 min-h-0 pt-4">
+        <main class="flex-1 p-4 md:p-6 flex flex-col">
+            <div class="w-full bg-black rounded-lg shadow-2xl flex-1 relative aspect-video">
+                <button id="unmute-btn" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-600 text-white font-bold py-4 px-8 rounded-lg z-10 hidden transition-opacity hover:bg-red-700 text-lg animate-pulse">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                    Click to Unmute
+                </button>
+                <div id="youtube-player"></div>
+            </div>
+        </main>
+        <aside class="w-full md:w-1/3 lg:w-1/4 p-4 flex flex-col" style="background-color: var(--brand-panel-bg);">
+            <h2 class="text-2xl font-bold mb-4 pb-2 border-b-2 text-center" style="border-color: var(--brand-water);">Events & Notes</h2>
+            <div id="event-list-display" class="flex-1 overflow-hidden pr-2"></div>
+            <!-- QR Code Placeholder -->
+            <div id="qr-code-display-area" class="mt-4 w-3/4 max-w-[200px] mx-auto">
+                <h3 id="qr-code-title-display" class="text-center font-bold text-lg mb-2 h-12 flex items-center justify-center" style="color: var(--brand-sky); line-height: 1.2;"></h3>
+                <div id="qr-code-container" class="p-2 bg-white rounded-lg aspect-square flex items-center justify-center">
+                    <span class="text-sm text-gray-500 text-center">No QR Code Active</span>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Bottom Ticker -->
+    <footer class="h-16 shadow-inner flex items-center overflow-hidden relative border-t-4" style="background-color: var(--brand-water); border-color: var(--brand-dawn);">
+        <!-- LOGO PLACEHOLDER -->
+        <div class="h-full w-48 bg-black/20 flex-shrink-0 flex items-center justify-center z-10 p-2">
+            <img src="https://www.dropbox.com/scl/fi/6hh4aygdngjrbcu1vnbr5/white-logo-new.png?rlkey=3fbkidr2jqhpjp52tjmp66q7e&raw=1" alt="Canal & River Trust Logo" class="h-12 object-contain">
+        </div>
+        <!-- TICKER WRAPPER -->
+        <div class="flex-1 h-full relative overflow-hidden">
+             <div id="ticker-text-container" class="absolute whitespace-nowrap w-full h-full flex items-center">
+                <!-- Ticker content is dynamically inserted here -->
+            </div>
+        </div>
+        <!-- CLOCK CONTAINER -->
+        <div id="clock-container" class="h-full w-48 bg-black/20 flex-shrink-0 flex items-center justify-center z-10 p-2 text-2xl font-bold">
+            <!-- Clock will be inserted here -->
+        </div>
+    </footer>
+    
+    <div id="notification" class="fixed bottom-5 right-5 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none"></div>
+
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        // State Management
+        let videoPlaylist = [];
+        let currentVideoIndex = 0;
+        let eventItems = [];
+        let qrCodes = [];
+        let tickerMessages = [];
+        let activeQrCodeId = null;
+        let tickerMode = 'continuous'; // 'continuous' or 'individual'
+        let currentTickerIndex = 0;
+        let player;
+        let notificationTimeout;
+        let qrRotationTimerId = null;
+
+        // DOM Elements
+        const controlsContainer = document.getElementById('controls-container');
+        const toggleControlsBtn = document.getElementById('toggle-controls-btn');
+        const settingsIcon = document.getElementById('settings-icon');
+        const closeIcon = document.getElementById('close-icon');
+        const youtubeLinkInput = document.getElementById('youtube-link');
+        const addVideoBtn = document.getElementById('add-video-btn');
+        const playlistControls = document.getElementById('playlist-controls');
+        const unmuteBtn = document.getElementById('unmute-btn');
+        const eventTextInput = document.getElementById('event-text');
+        const addEventBtn = document.getElementById('add-event-btn');
+        const eventListDisplay = document.getElementById('event-list-display');
+        const eventListControls = document.getElementById('event-list-controls');
+        const addTickerBtn = document.getElementById('add-ticker-btn');
+        const tickerMessageInput = document.getElementById('ticker-message');
+        const tickerSpeedInput = document.getElementById('ticker-speed');
+        const tickerTextContainer = document.getElementById('ticker-text-container');
+        const tickerListControls = document.getElementById('ticker-list-controls');
+        const continuousModeBtn = document.getElementById('continuous-mode-btn');
+        const individualModeBtn = document.getElementById('individual-mode-btn');
+        const notification = document.getElementById('notification');
+        const qrCodeUrlInput = document.getElementById('qr-code-url');
+        const qrCodeTitleInput = document.getElementById('qr-code-title');
+        const addQrBtn = document.getElementById('add-qr-btn');
+        const qrCodeContainer = document.getElementById('qr-code-container');
+        const qrCodeListControls = document.getElementById('qr-code-list-controls');
+        const qrCodeTitleDisplay = document.getElementById('qr-code-title-display');
+        const qrRotationTimeInput = document.getElementById('qr-rotation-time');
+        const clockContainer = document.getElementById('clock-container');
+
+        // --- Clock Function ---
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            
+            hours = hours % 12;
+            hours = hours ? hours : 12; // the hour '0' should be '12'
+            
+            const timeString = `${hours}:${minutes} ${ampm}`;
+            
+            clockContainer.textContent = timeString;
+        }
+
+        // --- YouTube Player API ---
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('youtube-player', {
+                height: '100%',
+                width: '100%',
+                playerVars: {
+                    'playsinline': 1, 'autoplay': 1, 'controls': 0, 'mute': 1,
+                    'loop': 0, 'rel': 0, 'showinfo': 0, 'modestbranding': 1, 'playlist': ''
+                },
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange }
+            });
+        }
+
+        function onPlayerReady(event) {
+            if (videoPlaylist.length > 0) { playVideo(currentVideoIndex); }
+        }
+
+        function onPlayerStateChange(event) {
+            if (event.data === YT.PlayerState.PLAYING && player.isMuted()) { unmuteBtn.style.display = 'block'; } 
+            else { unmuteBtn.style.display = 'none'; }
+            
+            if (event.data === YT.PlayerState.ENDED && videoPlaylist.length > 0) {
+                currentVideoIndex = (currentVideoIndex + 1) % videoPlaylist.length;
+                playVideo(currentVideoIndex);
+            }
+        }
+
+        // --- Event Listeners ---
+        toggleControlsBtn.addEventListener('click', toggleControls);
+        window.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.code === 'KeyM') { e.preventDefault(); toggleControls(); }
+        });
+
+        addVideoBtn.addEventListener('click', addVideo);
+        youtubeLinkInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') addVideo(); });
+
+        unmuteBtn.addEventListener('click', () => { player.unMute(); unmuteBtn.style.display = 'none'; });
+
+        addEventBtn.addEventListener('click', addEvent);
+        eventTextInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') addEvent(); });
+
+        addTickerBtn.addEventListener('click', addTickerMessage);
+        tickerMessageInput.addEventListener('keyup', (e) => { if (e.key === 'Enter') addTickerMessage(); });
+        
+        continuousModeBtn.addEventListener('click', () => setTickerMode('continuous'));
+        individualModeBtn.addEventListener('click', () => setTickerMode('individual'));
+
+        tickerSpeedInput.addEventListener('input', () => {
+            updateTickerDisplay();
+            saveState();
+        });
+        
+        addQrBtn.addEventListener('click', addQrCode);
+        qrRotationTimeInput.addEventListener('change', manageQrRotation);
+        
+        // --- Core Functions ---
+        function saveState() {
+            try {
+                const state = {
+                    videoPlaylist, eventItems, qrCodes, tickerMessages,
+                    activeQrCodeId, tickerMode,
+                    tickerSpeed: tickerSpeedInput.value,
+                    qrRotationInterval: qrRotationTimeInput.value
+                };
+                localStorage.setItem('broadcastToolState', JSON.stringify(state));
+            } catch (error) {
+                console.error("Could not save state to localStorage:", error);
+                showNotification("Error: Could not save settings.");
+            }
+        }
+
+        function loadState() {
+            const savedState = localStorage.getItem('broadcastToolState');
+            if (savedState) {
+                try {
+                    const state = JSON.parse(savedState);
+                    videoPlaylist = state.videoPlaylist || [];
+                    eventItems = state.eventItems || [];
+                    qrCodes = state.qrCodes || [];
+                    tickerMessages = state.tickerMessages || [];
+                    activeQrCodeId = state.activeQrCodeId || null;
+                    tickerMode = state.tickerMode || 'continuous';
+                    tickerSpeedInput.value = state.tickerSpeed || 150;
+                    qrRotationTimeInput.value = state.qrRotationInterval || 10;
+                } catch (error) {
+                    console.error("Could not parse saved state:", error);
+                }
+            }
+        }
+
+        function getYouTubeID(url) {
+            const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+            return url.match(regex)?.[1] || null;
+        }
+
+        async function getVideoTitle(videoId) {
+            try {
+                const response = await fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`);
+                const data = await response.json();
+                return data.title || 'Untitled Video';
+            } catch (error) {
+                console.error('Error fetching video title:', error);
+                return 'Untitled Video';
+            }
+        }
+
+        async function addVideo() {
+            const url = youtubeLinkInput.value.trim();
+            const videoId = getYouTubeID(url);
+            if (videoId) {
+                const title = await getVideoTitle(videoId);
+                videoPlaylist.push({ id: videoId, title: title });
+                renderPlaylistControls();
+                youtubeLinkInput.value = '';
+                if (videoPlaylist.length === 1 && player && player.loadVideoById) {
+                    currentVideoIndex = 0;
+                    playVideo(currentVideoIndex);
+                }
+                saveState();
+            } else { showNotification('Invalid YouTube URL'); }
+        }
+
+        function playVideo(index) {
+            if (player && player.loadVideoById && videoPlaylist[index]) {
+                currentVideoIndex = index;
+                player.loadVideoById(videoPlaylist[index].id);
+                renderPlaylistControls();
+            }
+        }
+
+        function deleteVideo(index) {
+            videoPlaylist.splice(index, 1);
+            if (index === currentVideoIndex) {
+                if (videoPlaylist.length > 0) {
+                    currentVideoIndex = Math.max(0, index - 1);
+                    playVideo(currentVideoIndex);
+                } else if (player && player.stopVideo) { player.stopVideo(); }
+            } else if (index < currentVideoIndex) { currentVideoIndex--; }
+            renderPlaylistControls();
+            saveState();
+        }
+
+        function renderPlaylistControls() {
+            playlistControls.innerHTML = videoPlaylist.length === 0 ? '<p class="text-gray-400">No videos in playlist.</p>' : '';
+            videoPlaylist.forEach((video, index) => {
+                const isPlaying = index === currentVideoIndex;
+                const item = document.createElement('div');
+                item.className = `flex justify-between items-center p-2 rounded ${isPlaying ? 'bg-sky-500/50' : 'bg-gray-700'}`;
+                item.innerHTML = `
+                    <p class="text-sm truncate flex-1 mr-2 ${isPlaying ? 'font-bold' : ''}">${video.title}</p>
+                    <button onclick="deleteVideo(${index})" class="text-red-400 hover:text-red-600" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg></button>`;
+                playlistControls.appendChild(item);
+            });
+        }
+        
+        function toggleControls() {
+            controlsContainer.classList.toggle('hidden-panel');
+            settingsIcon.classList.toggle('hidden');
+            closeIcon.classList.toggle('hidden');
+        }
+
+        function showNotification(message) {
+            notification.textContent = message;
+            notification.classList.remove('opacity-0');
+            clearTimeout(notificationTimeout);
+            notificationTimeout = setTimeout(() => { notification.classList.add('opacity-0'); }, 3000);
+        }
+
+        function addEvent() {
+            const value = eventTextInput.value.trim();
+            if (value) {
+                eventItems.push({ id: Date.now(), text: value });
+                renderEventLists();
+                eventTextInput.value = '';
+                saveState();
+            }
+        }
+
+        function deleteEvent(idToDelete) {
+            eventItems = eventItems.filter(item => item.id !== idToDelete);
+            renderEventLists();
+            saveState();
+        }
+
+        function renderEventLists() {
+            eventListDisplay.innerHTML = '';
+            eventListControls.innerHTML = eventItems.length === 0 ? '<p class="text-gray-400">No events added.</p>' : '';
+            eventItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center p-2 rounded bg-gray-700';
+                div.innerHTML = `<p class="text-sm truncate flex-1 mr-2">${item.text}</p><button onclick="deleteEvent(${item.id})" class="text-red-400 hover:text-red-600" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg></button>`;
+                eventListControls.appendChild(div);
+            });
+
+            if (eventItems.length === 0) {
+                eventListDisplay.innerHTML = '<p class="text-gray-400 text-center">No events or notes.</p>';
+                return;
+            }
+            
+            const eventsContainer = document.createElement('div');
+            eventItems.forEach(item => {
+                const p = document.createElement('p');
+                p.className = 'bg-gray-800/50 p-3 rounded-lg border-l-4 mb-3';
+                p.style.borderColor = 'var(--brand-leaf)';
+                p.textContent = item.text;
+                eventsContainer.appendChild(p);
+            });
+            eventListDisplay.appendChild(eventsContainer);
+
+            setTimeout(() => {
+                const isOverflowing = eventsContainer.scrollHeight > eventListDisplay.clientHeight;
+                if (isOverflowing) {
+                    const originalItems = Array.from(eventsContainer.children);
+                    originalItems.forEach(item => { eventsContainer.appendChild(item.cloneNode(true)); });
+                    const duration = eventItems.length * 16;
+                    eventsContainer.style.animationDuration = `${duration}s`;
+                    eventsContainer.classList.add('scrolling-events-container');
+                } else {
+                    eventListDisplay.classList.remove('overflow-hidden');
+                    eventListDisplay.classList.add('overflow-y-auto', 'custom-scrollbar');
+                }
+            }, 100);
+        }
+
+        // --- Ticker Functions ---
+        function setTickerMode(mode) {
+            tickerMode = mode;
+            updateTickerDisplay();
+            saveState();
+        }
+        
+        function updateTickerDisplay() {
+            tickerTextContainer.innerHTML = '';
+            updateTickerModeButtons();
+            if (tickerMode === 'continuous') { buildContinuousTicker(); } 
+            else { currentTickerIndex = -1; playNextIndividualTicker(); }
+        }
+
+        function buildContinuousTicker() {
+            const speed = tickerSpeedInput.value;
+            let message = tickerMessages.length > 0 ? tickerMessages.map(t => t.text).join(' • ') : "Welcome! Use Ctrl+M to open controls.";
+            const repeatedMessage = (message + ' • ').repeat(10);
+            tickerTextContainer.innerHTML = `<span class="text-2xl font-bold uppercase px-8 marquee" style="animation-duration: ${speed}s;">${repeatedMessage}</span>`;
+        }
+
+        function playNextIndividualTicker() {
+            if (tickerMessages.length === 0) { tickerTextContainer.innerHTML = ''; return; }
+            currentTickerIndex = (currentTickerIndex + 1) % tickerMessages.length;
+            const message = tickerMessages[currentTickerIndex].text;
+            const speed = tickerSpeedInput.value;
+            const span = document.createElement('span');
+            span.className = 'text-2xl font-bold uppercase px-8 marquee';
+            span.style.animationDuration = `${speed}s`;
+            span.textContent = message;
+            span.addEventListener('animationend', playNextIndividualTicker, { once: true });
+            tickerTextContainer.innerHTML = '';
+            tickerTextContainer.appendChild(span);
+        }
+
+        function addTickerMessage() {
+            const message = tickerMessageInput.value.trim();
+            if (message) {
+                tickerMessages.push({ id: Date.now(), text: message });
+                updateTickerDisplay();
+                renderTickerList();
+                tickerMessageInput.value = '';
+                saveState();
+            } else { showNotification('Please enter a message for the ticker.'); }
+        }
+
+        function deleteTickerMessage(id) {
+            tickerMessages = tickerMessages.filter(t => t.id !== id);
+            updateTickerDisplay();
+            renderTickerList();
+            saveState();
+        }
+        
+        function renderTickerList() {
+            tickerListControls.innerHTML = tickerMessages.length === 0 ? '<p class="text-gray-400">No messages saved.</p>' : '';
+            tickerMessages.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center p-2 rounded bg-gray-700';
+                div.innerHTML = `<p class="text-sm truncate flex-1 mr-2">${item.text}</p><button onclick="deleteTickerMessage(${item.id})" class="text-red-400 hover:text-red-600" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg></button>`;
+                tickerListControls.appendChild(div);
+            });
+        }
+        
+        function updateTickerModeButtons() {
+            continuousModeBtn.classList.toggle('mode-btn-active', tickerMode === 'continuous');
+            individualModeBtn.classList.toggle('mode-btn-active', tickerMode === 'individual');
+        }
+
+        // --- Graphics Functions ---
+        function addQrCode() {
+            const title = qrCodeTitleInput.value.trim();
+            const url = qrCodeUrlInput.value.trim();
+
+            if (!title) { showNotification('Please enter a title for the QR code.'); return; }
+            if (!url) { showNotification('Please enter a URL for the QR code.'); return; }
+
+            const tempDiv = document.createElement('div');
+            new QRCode(tempDiv, {
+                text: url,
+                width: 256,
+                height: 256,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            setTimeout(() => {
+                const img = tempDiv.querySelector('img');
+                const canvas = tempDiv.querySelector('canvas');
+                
+                if (!img && !canvas) {
+                     showNotification('Error generating QR code.');
+                     return;
+                }
+                
+                const imageDataUrl = canvas ? canvas.toDataURL() : img.src;
+
+                const newQr = { id: Date.now(), title: title, imageDataUrl: imageDataUrl, url: url };
+                qrCodes.push(newQr);
+                if (qrCodes.length === 1) { setActiveQrCode(newQr.id); }
+                
+                renderQrCodeList();
+                qrCodeTitleInput.value = '';
+                qrCodeUrlInput.value = '';
+                manageQrRotation();
+                saveState();
+            }, 100);
+        }
+
+        function setActiveQrCode(id) {
+            activeQrCodeId = id;
+            renderActiveQrCode();
+            renderQrCodeList();
+            saveState();
+        }
+
+        function deleteQrCode(idToDelete) {
+            const deletedIndex = qrCodes.findIndex(qr => qr.id === idToDelete);
+            qrCodes = qrCodes.filter(qr => qr.id !== idToDelete);
+            
+            if (activeQrCodeId === idToDelete) {
+                activeQrCodeId = qrCodes.length > 0 ? qrCodes[Math.max(0, deletedIndex - 1)].id : null;
+                renderActiveQrCode();
+            }
+            
+            renderQrCodeList();
+            manageQrRotation();
+            saveState();
+        }
+
+        function renderQrCodeList() {
+            qrCodeListControls.innerHTML = qrCodes.length === 0 ? '<p class="text-gray-400">No QR codes added.</p>' : '';
+            qrCodes.forEach(qr => {
+                const isActive = qr.id === activeQrCodeId;
+                const item = document.createElement('div');
+                item.className = `flex justify-between items-center p-2 rounded ${isActive ? 'bg-yellow-500/50' : 'bg-gray-700'}`;
+                item.innerHTML = `
+                    <p class="truncate text-sm flex-1 mr-2 ${isActive ? 'text-white font-semibold' : ''}">${qr.title}</p>
+                    <div class="flex items-center space-x-1 flex-shrink-0">
+                        <button onclick="setActiveQrCode(${qr.id})" class="show-qr-btn text-green-400 hover:text-green-300" title="Show"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" /></svg></button>
+                        <button onclick="deleteQrCode(${qr.id})" class="delete-qr-btn text-red-400 hover:text-red-600" title="Delete"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg></button>
+                    </div>`;
+                qrCodeListControls.appendChild(item);
+            });
+        }
+        
+        function renderActiveQrCode() {
+            const activeQr = qrCodes.find(qr => qr.id === activeQrCodeId);
+            const titleEl = qrCodeTitleDisplay;
+
+            if (activeQr) {
+                titleEl.textContent = activeQr.title;
+                qrCodeContainer.innerHTML = `<img src="${activeQr.imageDataUrl}" alt="${activeQr.title}" class="w-full h-full object-contain">`;
+                
+                setTimeout(() => {
+                    titleEl.style.fontSize = ''; 
+                    const initialFontSize = parseFloat(getComputedStyle(titleEl).fontSize);
+                    let currentFontSize = initialFontSize;
+                    while (titleEl.scrollHeight > titleEl.clientHeight && currentFontSize > 10) {
+                        currentFontSize--;
+                        titleEl.style.fontSize = `${currentFontSize}px`;
+                    }
+                }, 0);
+
+            } else {
+                titleEl.textContent = '';
+                titleEl.style.fontSize = '';
+                qrCodeContainer.innerHTML = '<span class="text-sm text-gray-500 text-center">No QR Code Active</span>';
+            }
+        }
+        
+        function manageQrRotation() {
+            if (qrRotationTimerId) {
+                clearInterval(qrRotationTimerId);
+                qrRotationTimerId = null;
+            }
+
+            if (qrCodes.length < 2) return;
+
+            const intervalSeconds = parseInt(qrRotationTimeInput.value, 10);
+            if (isNaN(intervalSeconds) || intervalSeconds < 1) return;
+
+            qrRotationTimerId = setInterval(() => {
+                const currentIdx = qrCodes.findIndex(qr => qr.id === activeQrCodeId);
+                const nextIdx = (currentIdx + 1) % qrCodes.length;
+                setActiveQrCode(qrCodes[nextIdx].id);
+            }, intervalSeconds * 1000);
+        }
+
+        // --- Initial Load ---
+        async function initializeApp() {
+            const isFirstLoad = !localStorage.getItem('broadcastToolState');
+            loadState();
+
+            if (isFirstLoad) {
+                // --- Set default YouTube videos ---
+                const defaultVideoUrls = [
+                    "https://www.youtube.com/watch?v=6TMPCH1kdZk",
+                    "https://www.youtube.com/watch?v=vTTlgpU-rRs"
+                ];
+                for (const url of defaultVideoUrls) {
+                    const videoId = getYouTubeID(url);
+                    if (videoId) {
+                        const title = await getVideoTitle(videoId);
+                        videoPlaylist.push({ id: videoId, title: title });
+                    }
+                }
+                
+                // --- Set default QR Code ---
+                const defaultQrTitle = "Please donate to our charity through the QR Code below";
+                const defaultQrUrl = "https://canalrivertrust.org.uk/support-us/donate";
+                
+                const tempDiv = document.createElement('div');
+                new QRCode(tempDiv, {
+                    text: defaultQrUrl,
+                    width: 256,
+                    height: 256,
+                    colorDark: "#000000",
+                    colorLight: "#ffffff",
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+
+                await new Promise(resolve => setTimeout(() => {
+                    const canvas = tempDiv.querySelector('canvas');
+                    if (canvas) {
+                        const newQr = { id: Date.now(), title: defaultQrTitle, imageDataUrl: canvas.toDataURL(), url: defaultQrUrl };
+                        qrCodes.push(newQr);
+                        activeQrCodeId = newQr.id;
+                    }
+                    resolve();
+                }, 200));
+
+                // --- Set other defaults ---
+                qrRotationTimeInput.value = 30;
+                tickerMessages = [{id: Date.now(), text: "Welcome! Use Ctrl+M to open controls."}];
+                eventItems = [{id: Date.now(), text: "New events will appear here."}];
+            }
+
+            // Start clock
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            // Render everything
+            updateTickerDisplay();
+            renderPlaylistControls();
+            renderEventLists();
+            renderQrCodeList();
+            renderActiveQrCode();
+            renderTickerList();
+            manageQrRotation();
+
+            if (videoPlaylist.length > 0 && player) {
+                playVideo(0);
+            }
+            if(isFirstLoad) saveState(); // Save the initial state with defaults
+        }
+        
+        initializeApp();
+    </script>
+</body>
+</html>
+
