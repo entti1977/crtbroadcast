@@ -131,7 +131,7 @@
     <!-- Toggle Controls Button (Shared) -->
     <!-- This button is now hidden as requested -->
     <button id="toggle-controls-btn" class="fixed top-4 right-4 z-30 bg-gray-700/50 p-2 rounded-full hover:bg-gray-600/70 transition-colors hidden">
-        <svg id="settings-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        <svg id="settings-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0 3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
         <svg id="close-icon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
     </button>
 
@@ -209,7 +209,8 @@
         <!-- Content Area (Portrait) -->
         <div class="flex flex-1 p-4 pt-0 min-h-0" style="background-color: var(--brand-panel-bg);">
             <!-- Events (Portrait) -->
-            <aside class="w-4/5 pr-2 flex flex-col">
+            <!-- This is the container I fixed by adding overflow-hidden -->
+            <aside class="w-4/5 pr-2 flex flex-col overflow-hidden">
                 <h2 id="event-title-display-portrait" class="text-xl font-bold mb-4 pb-2 border-b-2 text-center" style="border-color: var(--brand-water);">Events & Notes</h2>
                 <div id="event-list-display-vertical" class="flex-1 overflow-hidden pr-2"></div>
             </aside>
@@ -435,7 +436,8 @@
                     qrRotationTimeInput.value = state.qrRotationInterval || 10;
                     
                     eventTitleInput.value = eventListTitle; // Set input value on load
-                } catch (error) {
+                } catch (error)
+ {
                     console.error("Could not parse saved state:", error);
                 }
             }
@@ -592,31 +594,34 @@
             // Handle scrolling animation for both
             setTimeout(() => {
                 // Landscape
-                const isOverflowing = eventsContainer.scrollHeight > eventListDisplay.clientHeight;
-                if (isOverflowing) {
-                    const originalItems = Array.from(eventsContainer.children);
-                    originalItems.forEach(item => { eventsContainer.appendChild(item.cloneNode(true)); });
-                    const duration = eventItems.length * 16;
-                    eventsContainer.style.animationDuration = `${duration}s`;
-                    eventsContainer.classList.add('scrolling-events-container');
-                } else {
-                    eventListDisplay.classList.remove('overflow-hidden');
-                    eventListDisplay.classList.add('overflow-y-auto', 'custom-scrollbar');
+                if (eventsContainer.parentElement) {
+                    const isOverflowing = eventsContainer.scrollHeight > eventsContainer.parentElement.clientHeight;
+                    if (isOverflowing) {
+                        const originalItems = Array.from(eventsContainer.children);
+                        originalItems.forEach(item => { eventsContainer.appendChild(item.cloneNode(true)); });
+                        const duration = eventItems.length * 16;
+                        eventsContainer.style.animationDuration = `${duration}s`;
+                        eventsContainer.classList.add('scrolling-events-container');
+                    } else {
+                        eventListDisplay.classList.remove('overflow-hidden');
+                        eventListDisplay.classList.add('overflow-y-auto', 'custom-scrollbar');
+                    }
                 }
 
                 // Portrait
                 const eventsContainerVertical = eventListDisplayVertical.querySelector('div');
-                if (!eventsContainerVertical) return; // Guard clause
-                const isOverflowingVertical = eventsContainerVertical.scrollHeight > eventListDisplayVertical.clientHeight;
-                if (isOverflowingVertical) {
-                    const originalItemsVert = Array.from(eventsContainerVertical.children);
-                    originalItemsVert.forEach(item => { eventsContainerVertical.appendChild(item.cloneNode(true)); });
-                    const durationVert = eventItems.length * 16;
-                    eventsContainerVertical.style.animationDuration = `${durationVert}s`;
-                    eventsContainerVertical.classList.add('scrolling-events-container');
-                } else {
-                    eventListDisplayVertical.classList.remove('overflow-hidden');
-                    eventListDisplayVertical.classList.add('overflow-y-auto', 'custom-scrollbar');
+                if (eventsContainerVertical && eventsContainerVertical.parentElement) { 
+                    const isOverflowingVertical = eventsContainerVertical.scrollHeight > eventsContainerVertical.parentElement.clientHeight;
+                    if (isOverflowingVertical) {
+                        const originalItemsVert = Array.from(eventsContainerVertical.children);
+                        originalItemsVert.forEach(item => { eventsContainerVertical.appendChild(item.cloneNode(true)); });
+                        const durationVert = eventItems.length * 16;
+                        eventsContainerVertical.style.animationDuration = `${durationVert}s`;
+                        eventsContainerVertical.classList.add('scrolling-events-container');
+                    } else {
+                        eventListDisplayVertical.classList.remove('overflow-hidden');
+                        eventListDisplayVertical.classList.add('overflow-y-auto', 'custom-scrollbar');
+                    }
                 }
             }, 100);
         }
@@ -879,8 +884,8 @@
             if (isFirstLoad) {
                 // --- Set default YouTube videos ---
                 const defaultVideoUrls = [
-                    "https://www.youtube.com/watch?v=6TMPCH1kdZk",
-                    "https://www.youtube.com/watch?v=vTTlgpU-rRs"
+                    "https//www.youtube.com/watch?v=6TMPCH1kdZk",
+                    "https//www.youtube.com/watch?v=vTTlgpU-rRs"
                 ];
                 for (const url of defaultVideoUrls) {
                     const videoId = getYouTubeID(url);
