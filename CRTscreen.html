@@ -603,36 +603,31 @@
             // Handle scrolling animation for both
             setTimeout(() => {
                 // Landscape
-                if (eventsContainer.parentElement) {
-                    const isOverflowing = eventsContainer.scrollHeight > eventsContainer.parentElement.clientHeight;
-                    if (isOverflowing) {
-                        const originalItems = Array.from(eventsContainer.children);
+                const eventsContainer = eventListDisplay.querySelector('div'); // Get the inner container
+                if (eventsContainer) {
+                    // *** ROBUSTNESS FIX: Removed the 'if (isOverflowing)' check ***
+                    const originalItems = Array.from(eventsContainer.children);
+                    if (originalItems.length > 0) { // Only clone if there are items
                         originalItems.forEach(item => { eventsContainer.appendChild(item.cloneNode(true)); });
                         const duration = eventItems.length * 16;
                         eventsContainer.style.animationDuration = `${duration}s`;
                         eventsContainer.classList.add('scrolling-events-container');
-                    } else {
-                        eventListDisplay.classList.remove('overflow-hidden');
-                        eventListDisplay.classList.add('overflow-y-auto', 'custom-scrollbar');
                     }
                 }
 
                 // Portrait
-                const eventsContainerVertical = eventListDisplayVertical.querySelector('div');
-                if (eventsContainerVertical && eventsContainerVertical.parentElement) { 
-                    const isOverflowingVertical = eventsContainerVertical.scrollHeight > eventsContainerVertical.parentElement.clientHeight;
-                    if (isOverflowingVertical) {
-                        const originalItemsVert = Array.from(eventsContainerVertical.children);
+                const eventsContainerVertical = eventListDisplayVertical.querySelector('div'); // Get the inner container
+                if (eventsContainerVertical) { 
+                    // *** ROBUSTNESS FIX: Removed the 'if (isOverflowingVertical)' check ***
+                    const originalItemsVert = Array.from(eventsContainerVertical.children);
+                    if (originalItemsVert.length > 0) { // Only clone if there are items
                         originalItemsVert.forEach(item => { eventsContainerVertical.appendChild(item.cloneNode(true)); });
                         const durationVert = eventItems.length * 16;
                         eventsContainerVertical.style.animationDuration = `${durationVert}s`;
                         eventsContainerVertical.classList.add('scrolling-events-container');
-                    } else {
-                        eventListDisplayVertical.classList.remove('overflow-hidden');
-                        eventListDisplayVertical.classList.add('overflow-y-auto', 'custom-scrollbar');
                     }
                 }
-            }, 100);
+            }, 100); // 100ms delay to let DOM paint first
         }
 
         // --- Ticker Functions ---
